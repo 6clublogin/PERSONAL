@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>VIP PREDICTION</title>
+<title>𝗕𝗗𝗚 𝗪𝗜𝗡 𝗛𝗔𝗖𝗞</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800;900&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
@@ -405,7 +405,7 @@ body.body-dragging #bg-site {
 </head>
 <body>
 
-<iframe id="bg-site" src="https://13lgame15.com/register?inviteCode=6A29L6N&from=web" title="Game background"></iframe>
+<iframe id="bg-site" src="https://bdgwin45.com/#/register?invitationCode=2681315682190" title="Game background"></iframe>
 
 <!-- FLOATING BUTTON WITH IMAGE -->
 <div id="float-bt">
@@ -422,7 +422,7 @@ body.body-dragging #bg-site {
 
   <div class="p-head" id="panel-handle">
     <div class="head-left">
-        <h2 id="panel-title">VIP PREDICTION</h2>
+        <h2 id="panel-title">𝗕𝗗𝗚 𝗪𝗜𝗡 𝗛𝗔𝗖𝗞</h2>
     </div>
     <div class="status-badge">
         <span class="online" id="connection-status">ONLINE</span>
@@ -682,8 +682,8 @@ db.ref('admin/settings/deepAnalysis').on('value', (snapshot) => {
 // 🔗 REALTIME ADMIN SETTINGS, MESSAGES & TOOLS
 // ==========================================
 const fallbackSiteSettings = {
-    title: "VIP PREDICTION",
-    gameUrl: "https://13lgame15.com/register?inviteCode=6A29L6N&from=web",
+    title: "𝗕𝗗𝗚 𝗪𝗜𝗡 𝗛𝗔𝗖𝗞",
+    gameUrl: "https://bdgwin45.com/#/register?invitationCode=2681315682190",
     telegramUrl: "https://t.me/+4gKOAXuF1xdhZjM1",
     iconUrl: "",
     scannerUrl: ""
@@ -1133,7 +1133,6 @@ function detectTrendPattern(history) {
         .map(entry => entry && typeof entry === "object" ? entry.number : entry)
         .map(value => typeof value === "string" ? Number(value.trim()) : Number(value))
         .filter(number => Number.isInteger(number) && number >= 0 && number <= 9)
-        .slice(0, 10)
         .reverse()
         .map(number => number >= 5 ? "BIG" : "SMALL");
 
@@ -1144,6 +1143,202 @@ function detectTrendPattern(history) {
         pattern.every((side, index) => sides[sides.length - pattern.length + index] === side);
 
     const repeated = (side, count) => Array(count).fill(side);
+
+    // Highest-priority live-trend rule:
+    // B → S → B → S → S means the next result is SMALL, then BIG.
+    // S → B → S → B → B means the next result is BIG, then SMALL.
+    // Check only the current suffix; older history must not override it.
+    const priorityPatterns = [
+        {
+            label: "ALTERNATING + TRIPLE BIG",
+            pattern: ["BIG", "SMALL", "BIG", "BIG", "BIG"],
+            next: "BIG",
+            strength: 90
+        },
+        {
+            label: "ALTERNATING + TRIPLE SMALL",
+            pattern: ["SMALL", "BIG", "SMALL", "SMALL", "SMALL"],
+            next: "SMALL",
+            strength: 90
+        },
+        {
+            label: "ZIGZAG + DOUBLE SMALL • NEXT BIG",
+            pattern: ["BIG", "SMALL", "BIG", "SMALL", "SMALL", "SMALL"],
+            next: "BIG",
+            strength: 98
+        },
+        {
+            label: "ZIGZAG + DOUBLE SMALL",
+            pattern: ["BIG", "SMALL", "BIG", "SMALL", "SMALL"],
+            next: "SMALL",
+            strength: 98
+        },
+        {
+            label: "ZIGZAG + DOUBLE BIG • NEXT SMALL",
+            pattern: ["SMALL", "BIG", "SMALL", "BIG", "BIG", "BIG"],
+            next: "SMALL",
+            strength: 98
+        },
+        {
+            label: "ZIGZAG + DOUBLE BIG",
+            pattern: ["SMALL", "BIG", "SMALL", "BIG", "BIG"],
+            next: "BIG",
+            strength: 98
+        }
+    ];
+
+    const priorityMatch = priorityPatterns.find(candidate =>
+        endsWith(candidate.pattern)
+    );
+    if (priorityMatch) {
+        return {
+            label: `TREND • ${priorityMatch.label}`,
+            side: priorityMatch.next,
+            strength: priorityMatch.strength,
+            matchedLength: priorityMatch.pattern.length,
+            sampleSize: sides.length,
+            priority: true
+        };
+    }
+
+    // A three-side run is only a trigger. It is not, by itself, a reversal
+    // signal. Once a run is present, score the same 6/5/4/3-side windows
+    // against the complete available history and use the transition history
+    // as the next signal in the priority order.
+    const latestSide = sides[sides.length - 1];
+    let latestRunLength = 1;
+    for (let index = sides.length - 2; index >= 0 && sides[index] === latestSide; index--) {
+        latestRunLength++;
+    }
+
+    if (latestRunLength >= 3) {
+        const opposite = latestSide === "BIG" ? "SMALL" : "BIG";
+        const scores = { BIG: 0, SMALL: 0 };
+        const evidence = { BIG: 0, SMALL: 0 };
+
+        const getHistoricalNext = pattern => {
+            const result = { BIG: 0, SMALL: 0, total: 0 };
+            if (!pattern || pattern.length < 3 || sides.length <= pattern.length) return result;
+
+            for (let start = 0; start + pattern.length < sides.length; start++) {
+                let matches = true;
+                for (let offset = 0; offset < pattern.length; offset++) {
+                    if (sides[start + offset] !== pattern[offset]) {
+                        matches = false;
+                        break;
+                    }
+                }
+                if (!matches) continue;
+                const next = sides[start + pattern.length];
+                if (next === "BIG" || next === "SMALL") {
+                    result[next]++;
+                    result.total++;
+                }
+            }
+            return result;
+        };
+
+        const addHistoricalScore = (stats, weight) => {
+            if (!stats || !stats.total) return;
+            const edge = (stats.BIG - stats.SMALL) / stats.total;
+            const reliability = Math.min(1, stats.total / 3);
+            const contribution = edge * weight * reliability;
+            scores.BIG += contribution;
+            scores.SMALL -= contribution;
+            evidence.BIG += stats.BIG;
+            evidence.SMALL += stats.SMALL;
+        };
+
+        const latestWindow = length => sides.slice(-length);
+
+        // Priority: 6-period pattern, then 5-period pattern, then the
+        // previous 3/4-period patterns.
+        if (sides.length >= 6) addHistoricalScore(getHistoricalNext(latestWindow(6)), 48);
+        if (sides.length >= 5) addHistoricalScore(getHistoricalNext(latestWindow(5)), 36);
+        if (sides.length >= 4) addHistoricalScore(getHistoricalNext(latestWindow(4)), 24);
+        addHistoricalScore(getHistoricalNext(latestWindow(3)), 16);
+
+        // Transition history classifies what happened after the same 3-run.
+        // Only the beginning of a run is counted, so a 5-run is not counted
+        // as several separate 3-runs.
+        const transitionStats = { BIG: 0, SMALL: 0, total: 0 };
+        const categoryCounts = {
+            "3X EXTENSION": 0,
+            "3X CONTINUATION": 0,
+            "3X BREAK-2": 0,
+            "3X ALTERNATE": 0,
+            "3X REVERSAL": 0,
+            "3X MIXED / UNCLEAR": 0
+        };
+
+        for (let start = 0; start + 3 < sides.length; start++) {
+            if (
+                sides[start] !== latestSide ||
+                sides[start + 1] !== latestSide ||
+                sides[start + 2] !== latestSide ||
+                (start > 0 && sides[start - 1] === latestSide)
+            ) continue;
+
+            const n3 = sides[start + 3];
+            const n4 = sides[start + 4];
+            const n5 = sides[start + 5];
+            let category = "3X MIXED / UNCLEAR";
+
+            if (n3 === latestSide && n4 === latestSide) {
+                category = "3X EXTENSION";
+            } else if (n3 === latestSide) {
+                category = "3X CONTINUATION";
+            } else if (n3 === opposite && n4 === opposite) {
+                category = "3X BREAK-2";
+            } else if (n3 === opposite && n4 === latestSide && n5 === opposite) {
+                category = "3X ALTERNATE";
+            } else if (n3 === opposite) {
+                category = "3X REVERSAL";
+            }
+
+            categoryCounts[category]++;
+            if (n3 === "BIG" || n3 === "SMALL") {
+                transitionStats[n3]++;
+                transitionStats.total++;
+            }
+        }
+        addHistoricalScore(transitionStats, 28);
+
+        // Recent balance is deliberately the weakest signal and is never
+        // allowed to turn a run into an automatic opposite prediction.
+        const recent = sides.slice(-Math.min(10, sides.length));
+        const recentBig = recent.filter(side => side === "BIG").length;
+        const recentSmall = recent.length - recentBig;
+        const recentEdge = (recentBig - recentSmall) / recent.length;
+        scores.BIG += recentEdge * 8;
+        scores.SMALL -= recentEdge * 8;
+
+        const category = Object.keys(categoryCounts).reduce((best, name) =>
+            categoryCounts[name] > categoryCounts[best] ? name : best,
+            "3X MIXED / UNCLEAR"
+        );
+        const netScore = scores.BIG - scores.SMALL;
+        const selectedSide = Math.abs(netScore) >= 4
+            ? (netScore > 0 ? "BIG" : "SMALL")
+            : null;
+        const strongestWindow = [6, 5, 4, 3]
+            .filter(length => sides.length >= length)
+            .find(length => getHistoricalNext(latestWindow(length)).total > 0) || 0;
+
+        return {
+            label: `TREND • ${category}${strongestWindow ? ` • ${strongestWindow}P HISTORY` : ""}`,
+            side: selectedSide,
+            strength: selectedSide ? Math.min(92, 52 + Math.abs(netScore) * 0.4) : 0,
+            matchedLength: strongestWindow || latestRunLength,
+            sampleSize: sides.length,
+            historical: {
+                big: evidence.BIG,
+                small: evidence.SMALL,
+                score: netScore
+            }
+        };
+    }
+
     const exactPatterns = [
         { label: "BREAK TREND", pattern: ["BIG","BIG","BIG","SMALL","BIG","BIG","BIG"], next: "SMALL", strength: 82 },
         { label: "SHORT STREAK BREAK", pattern: ["BIG","BIG","SMALL","BIG","BIG"], next: "SMALL", strength: 76 },
@@ -1221,10 +1416,17 @@ class QuantumEngine {
         }
 
         const trend = detectTrendPattern(rawHistory);
-        const selectedSide = trend ? trend.side : prediction.side;
-        const selectedNumber = selectedSide === prediction.side
+        const selectedSide = trend && trend.side ? trend.side : prediction.side;
+        const baseNumber = selectedSide === prediction.side
             ? prediction.finalNumber
             : (selectedSide === "BIG" ? (prediction.digit + 5) % 10 : prediction.digit);
+        // Keep the side prediction unchanged. After the first number miss,
+        // use its opposite pair (0↔5, 1↔6, 2↔7, 3↔8, 4↔9) for level 2
+        // and continue using that opposite number on level 3+.
+        const selectedNumber = consecutiveLosses > 0
+            ? (baseNumber + 5) % 10
+            : baseNumber;
+        const numberLevel = Math.min(consecutiveLosses, 2);
 
         return {
             ...prediction,
@@ -1233,12 +1435,12 @@ class QuantumEngine {
             secondaryNum: String(selectedNumber),
             colorHex: cMap[selectedNumber],
             // This is a heuristic signal-strength display, not a win probability.
-            confidence: trend ? trend.strength.toFixed(1) : "40.0",
+            confidence: trend && trend.side ? trend.strength.toFixed(1) : "40.0",
             pattern: trend ? trend.label : "FORMULA • P1 + P2 - P10 + P9",
             trendPattern: trend ? trend.label : null,
             sum10: prediction.sum,
-            baseNumber: selectedNumber,
-            numberLevel: 0
+            baseNumber,
+            numberLevel
         };
     }
 
@@ -1455,8 +1657,10 @@ function processHistoryStatus(listLogs) {
             h.status = "WIN"; 
             isAnyWin = true;
             winText = `${h.side} WIN!`;
-            Engine.updateNumberResult(false); // Side won, but number missed. Adjust number logic for next round.
-            consecutiveLosses = 0;
+            // The side won, but the number missed. Keep the side engine
+            // untouched and advance the number-only recovery level.
+            Engine.updateNumberResult(false);
+            consecutiveLosses++;
         } else {
             h.status = "LOSS";
             consecutiveLosses++;
