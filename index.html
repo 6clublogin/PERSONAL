@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>𝗕𝗗𝗚 𝗪𝗜𝗡 𝗛𝗔𝗖𝗞</title>
+<title>BDG WIN HACK</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800;900&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
@@ -682,7 +682,7 @@ db.ref('admin/settings/deepAnalysis').on('value', (snapshot) => {
 // 🔗 REALTIME ADMIN SETTINGS, MESSAGES & TOOLS
 // ==========================================
 const fallbackSiteSettings = {
-    title: "𝗕𝗗𝗚 𝗪𝗜𝗡 𝗛𝗔𝗖𝗞",
+    title: "BDG WIN HACK",
     gameUrl: "https://bdgwin45.com/#/register?invitationCode=2681315682190",
     telegramUrl: "https://t.me/+4gKOAXuF1xdhZjM1",
     iconUrl: "",
@@ -1124,6 +1124,17 @@ function calculateFormulaPrediction(history) {
 // ==========================================
 // 📈 EXPLICIT BIG/SMALL TREND PATTERN ENGINE
 // ==========================================
+const THREE_STREAK_PATTERNS = {
+    "BBSBB": "SSS",
+    "SSSBSB": "SSS",
+    "SSSBBS": "BBB",
+    "BBBSB": "SSS",
+    "SBSSS": "BBB",
+    "SSBBB": "SSS",
+    "SSSBBB": "SSS",
+    "BBBSSS": "BBB"
+};
+
 function detectTrendPattern(history) {
     if (!Array.isArray(history)) return null;
 
@@ -1143,6 +1154,28 @@ function detectTrendPattern(history) {
         pattern.every((side, index) => sides[sides.length - pattern.length + index] === side);
 
     const repeated = (side, count) => Array(count).fill(side);
+
+    // User-provided B/S patterns. Check the longest matching suffix first so
+    // a 6-result pattern is not shadowed by a matching 5-result suffix.
+    const compactHistory = sides
+        .map(side => side === "BIG" ? "B" : "S")
+        .join("");
+    const customContext = Object.keys(THREE_STREAK_PATTERNS)
+        .sort((a, b) => b.length - a.length)
+        .find(context => compactHistory.endsWith(context));
+
+    if (customContext) {
+        const trend = THREE_STREAK_PATTERNS[customContext];
+        const trendSide = trend[0] === "B" ? "BIG" : "SMALL";
+        return {
+            label: `TREND • CUSTOM ${customContext} → ${trend}`,
+            side: trendSide,
+            strength: 95,
+            matchedLength: customContext.length,
+            sampleSize: sides.length,
+            customTrend: trend
+        };
+    }
 
     // Highest-priority live-trend rule:
     // B → S → B → S → S means the next result is SMALL, then BIG.
